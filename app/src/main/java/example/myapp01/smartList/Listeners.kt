@@ -1,5 +1,0 @@
-package smartList
-
-
-interface AbstractListeners
-
