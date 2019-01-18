@@ -6,95 +6,182 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.BaseAdapter
+import androidx.annotation.IdRes
+import androidx.annotation.LayoutRes
 import androidx.recyclerview.widget.RecyclerView
-import example.myapp01.MainActivity
+import example.myapp01.adapter.itemRepresentation.Representation
+
 
 interface ItemWithViewType {
     val viewType: Int
+
+    val ItemWithViewType.T get() = Representation
+
+    operator fun <IT> ItemRepresentation<IT>.invoke(i: IT) = checkType(i)
+
+    fun <IT> ItemRepresentation<IT>.checkType(item: IT): Int {
+        return helper.vt
+    }
 }
 
-open class SimpleViewHolder(val view: View) : RecyclerView.ViewHolder(view)
+typealias RecyclerViewHolder = RecyclerView.ViewHolder
 
+open class SimpleViewHolder(val view: View) : RecyclerViewHolder(view)
 
-class ItemRepresentationMap {
-    private val sparseArray = SparseArray<ItemRepresentation>()
+interface ItemRepresentationMap {
+    val size: Int
+    operator fun get(representationKey: Int): ItemRepresentation<ItemWithViewType>
+}
 
-    val size get() = sparseArray.size()
+class ItemRepresentationMapImpl : ItemRepresentationMap {
+    private val sparseArray = SparseArray<ItemRepresentation<ItemWithViewType>>()
 
-    operator fun set(representationKey: MainActivity.Representation, value: ItemRepresentation) =
-        sparseArray.append(representationKey.ordinal, value)
+    override val size get() = sparseArray.size()
 
-    operator fun set(representationKey: Int, value: ItemRepresentation) = sparseArray.append(representationKey, value)
+//    @Suppress("UNCHECKED_CAST")
+//    operator fun set(representationKey: Representation, value: ItemRepresentation<out ItemWithViewType>) =
+//        sparseArray.append(representationKey.ordinal, value as ItemRepresentation<ItemWithViewType>)
 
-    operator fun get(representationKey: Int) = sparseArray.get(representationKey)
+    @Suppress("UNCHECKED_CAST")
+    operator fun set(representationKey: Int, value: ItemRepresentation<out ItemWithViewType>) =
+        sparseArray.append(representationKey, value as ItemRepresentation<ItemWithViewType>)
+
+    override operator fun get(representationKey: Int) = sparseArray.get(representationKey) ?: emptyItemRepresentation
 
 }
 
-
-interface ItemRepresentation {
-    interface BindHelper {
-        fun onBind(viewHolder: SimpleViewHolder, item: ItemWithViewType, position: Int)
+val emptyItemRepresentation = object : ItemRepresentation<ItemWithViewType> {
+    override fun createViewHolder(parent: ViewGroup): RecyclerViewHolder {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 
-    fun createViewHolder(parent: ViewGroup): SimpleViewHolder
+    override val helper: ItemRepresentation.Helper<ItemWithViewType>
+        get() = TODO("not implemented") //To change initializer of created properties use File | Settings | File Templates.
 
-    val bindHelper: BindHelper
+}
 
-    fun ViewGroup.viewBy(layoutId: Int): View {
+interface ItemRepresentationTools {
+
+    fun ViewGroup.viewBy(@LayoutRes layoutId: Int): View {
         return LayoutInflater.from(this.context).inflate(layoutId, this, false)
     }
 
-}
-
-
-fun <VHT : SimpleViewHolder, IT : ItemWithViewType> BindHelperWithPosition(bindBlock: VHT.(IT, Int) -> Unit): ItemRepresentation.BindHelper {
-    return object : ItemRepresentation.BindHelper {
-        @Suppress("UNCHECKED_CAST")
-        override fun onBind(viewHolder: SimpleViewHolder, item: ItemWithViewType, position: Int) {
-            (viewHolder as VHT).bindBlock(item as IT, position)
+    fun ViewGroup.viewBy(@LayoutRes layoutId: Int, @IdRes viewId: Int): View {
+        if (View.NO_ID == viewId) {
+            return viewBy(layoutId)
         }
+        return this.findViewById(viewId) ?: return viewBy(layoutId)
     }
 }
 
-fun <VHT : SimpleViewHolder, IT : ItemWithViewType> SimpleBindHelper(bindBlock: VHT.(IT) -> Unit): ItemRepresentation.BindHelper {
-    return object : ItemRepresentation.BindHelper {
-        @Suppress("UNCHECKED_CAST")
-        override fun onBind(viewHolder: SimpleViewHolder, item: ItemWithViewType, position: Int) {
-            (viewHolder as VHT).bindBlock(item as IT)
+abstract class ItemRepresentationView<IT> : ItemRepresentation<IT> {
+    private var viewHolder: RecyclerViewHolder? = null
+
+    fun update(parent: ViewGroup, item: IT) {
+        var vh = viewHolder
+        if (null == vh) {
+            vh = createViewHolder(parent)
+            viewHolder = vh
         }
+        helper.onBind(vh, item, 0)
     }
 }
 
+interface ItemRepresentation<IT> : ItemRepresentationTools {
+    companion object {
+        const val keyUndefined = -1
+    }
+    interface Helper<IT> {
+        var vt: Int
+        val itemClass: Class<IT>
+        fun onBind(viewHolder: RecyclerViewHolder, item: IT, position: Int)
+    }
 
-abstract class ItemRepresentationRecyclerViewAdapter : RecyclerView.Adapter<SimpleViewHolder>() {
+    fun createViewHolder(parent: ViewGroup): RecyclerViewHolder
 
-    abstract val items: List<ItemWithViewType>
+    val helper: Helper<IT>
 
-    abstract val itemRepresentationMap: ItemRepresentationMap
+    fun <VHT : RecyclerViewHolder, IT> HelperPlusPosition(
+        hvClass: Class<VHT>, itemClass: Class<IT>, bindBlock: VHT.(IT, Int) -> Unit
+    ) = object : ItemRepresentation.Helper<IT> {
+        override var vt: Int = keyUndefined
+
+        override val itemClass = itemClass
+
+        @Suppress("UNCHECKED_CAST")
+        override fun onBind(viewHolder: RecyclerViewHolder, item: IT, position: Int) {
+            (viewHolder as VHT).bindBlock(item, position)
+        }
+    }
+
+    fun <VHT : RecyclerViewHolder, IT> Helper(
+        hvClass: Class<VHT>, itemClass: Class<IT>, bindBlock: VHT.(IT) -> Unit
+    ) = object : ItemRepresentation.Helper<IT> {
+        override var vt: Int = keyUndefined
+        override val itemClass = itemClass
+        @Suppress("UNCHECKED_CAST")
+        override fun onBind(viewHolder: RecyclerViewHolder, item: IT, position: Int) {
+            (viewHolder as VHT).bindBlock(item)
+        }
+    }
+
+}
+
+
+
+abstract class ItemRepresentationRecyclerViewAdapter : MultiItemTypeRecyclerViewAdapter<ItemWithViewType>() {
+
+    private val itemRepresentationMap = ItemRepresentationMapImpl()
+
+    @Suppress("UNCHECKED_CAST")
+    operator fun plusAssign(ir: ItemRepresentation<out ItemWithViewType>) {
+        itemRepresentationMap[Representation.representationKey(ir)] = ir
+    }
+
+    override fun itemRepresentation(viewType: Int): ItemRepresentation<ItemWithViewType> {
+        val ir = itemRepresentationMap[viewType]
+        if (emptyItemRepresentation == ir) {
+            return Representation[viewType]
+        }
+        return ir
+    }
+
+    override fun getItemViewType(position: Int) = items[position].viewType
+}
+
+abstract class MultiItemTypeRecyclerViewAdapter<IT> : RecyclerView.Adapter<RecyclerViewHolder>() {
+
+    abstract val items: List<IT>
+
+    abstract fun itemRepresentation(viewType: Int): ItemRepresentation<IT>
 
     override fun getItemCount(): Int = items.size
-    override fun getItemViewType(position: Int): Int = items[position].viewType
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): SimpleViewHolder {
-        val viewHolder = itemRepresentationMap[viewType]?.createViewHolder(parent)
-        if (viewHolder is SimpleViewHolder) {
-            return viewHolder
-        }
-        throw Exception("Error: unsupported  viewType=$viewType")
-    }
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) =
+        itemRepresentation(viewType).createViewHolder(parent)
 
-    override fun onBindViewHolder(viewHolder: SimpleViewHolder, position: Int) {
-        val item = items[position]
-        itemRepresentationMap[item.viewType]?.bindHelper?.onBind(viewHolder, item, position)
-    }
+    override fun onBindViewHolder(viewHolder: RecyclerViewHolder, position: Int) =
+        itemRepresentation(getItemViewType(position)).helper.onBind(viewHolder, items[position], position)
+}
 
+abstract class SingleItemTypeRecyclerViewAdapter<IT>(val itemRepresentation: ItemRepresentation<IT>) :
+    RecyclerView.Adapter<RecyclerViewHolder>() {
+
+    abstract val items: List<IT>
+
+    override fun getItemCount(): Int = items.size
+
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) = itemRepresentation.createViewHolder(parent)
+
+    override fun onBindViewHolder(viewHolder: RecyclerViewHolder, position: Int) =
+        itemRepresentation.helper.onBind(viewHolder, items[position], position)
 }
 
 abstract class ItemRepresentationListViewAdapter : BaseAdapter() {
 
     abstract val items: List<ItemWithViewType>
 
-    abstract val itemRepresentationMap: ItemRepresentationMap
+    abstract val itemRepresentationMap: ItemRepresentationMapImpl
 
     override fun hasStableIds(): Boolean = false
 
@@ -113,13 +200,13 @@ abstract class ItemRepresentationListViewAdapter : BaseAdapter() {
     override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
         val convertViewTag = convertView?.tag
         val item = items[position]
-        val holder: SimpleViewHolder = if (convertViewTag is SimpleViewHolder) {
-            convertViewTag as SimpleViewHolder
+        val holder: RecyclerViewHolder = if (convertViewTag is RecyclerViewHolder) {
+            convertViewTag
         } else {
-            itemRepresentationMap[item.viewType]?.createViewHolder(parent) ?: throw  Exception("!!!!!!")
+            itemRepresentationMap[item.viewType].createViewHolder(parent)
         }
-        holder.view.tag = holder
-        itemRepresentationMap[item.viewType]?.bindHelper?.onBind(holder, item, position)
-        return holder.view
+        holder.itemView.tag = holder
+        itemRepresentationMap[item.viewType].helper.onBind(holder, item, position)
+        return holder.itemView
     }
 }

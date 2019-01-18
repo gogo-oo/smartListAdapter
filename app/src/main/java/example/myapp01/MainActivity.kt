@@ -3,12 +3,17 @@ package example.myapp01
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
-import android.view.View
-import android.view.ViewGroup
-import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.snackbar.Snackbar
-import example.myapp01.itemRepresentation.*
+import example.myapp01.adapter.item.ItemA
+import example.myapp01.adapter.item.ItemAA
+import example.myapp01.adapter.item.ItemB
+import example.myapp01.adapter.itemRepresentation.TextViewItemRepresentation
+import example.myapp01.adapter.itemRepresentation.VH01A
+import example.myapp01.adapter.itemRepresentation.VH01B
+import example.myapp01.itemRepresentation.ItemRepresentationRecyclerViewAdapter
+import example.myapp01.itemRepresentation.ItemWithViewType
+import example.myapp01.itemRepresentation.SingleItemTypeRecyclerViewAdapter
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.content_main.*
 
@@ -16,101 +21,69 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         setContentView(R.layout.activity_main)
         setSupportActionBar(toolbar)
 
-        val representationMap = ItemRepresentationMap()
-        representationMap[Representation.RItemA] = VH01A { println("MainActivity.onItemClick " + it.label) }
-        representationMap[Representation.RItemAA] = VH01AA()
-        representationMap[Representation.RItemB] = VH01B(
-            { println("MainActivity.onItemClick  - " + it.labl) },
-            { println("MainActivity.onIteDmClick - " + it) })
+        val textViewIR01 = TextViewItemRepresentation(viewId = R.id.textView01) {
+            println(it)
+            Snackbar.make(recyclerView1, "text = $it", Snackbar.LENGTH_LONG)
+                .setAction("Action", null).show()
+        }
+
+        textViewIR01.update(contentMain, "textView01")
 
         fab.setOnClickListener { view ->
             Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
                 .setAction("Action", null).show()
         }
 
-        listView.adapter = object : ItemRepresentationListViewAdapter() {
-            override val itemRepresentationMap = representationMap
-            override val items: List<ItemWithViewType> = Array(15, { i ->
-                if (i < 9) ItemA("lv0$i") else ItemB("lv$i")
-            }).asList()
-        }
+//        listView.adapter = object : ItemRepresentationListViewAdapter() {
+//            override val itemRepresentationMap = representationMap
+//            override val items: List<ItemWithViewType> = Array(15, { i ->
+//                if (i < 9) ItemA("lv0$i") else ItemB("lv$i")
+//            }).asList()
+//        }
 
 //        recyclerView = rootView.findViewById(R.id.recyclerView)
 //        val layoutManager = LinearLayoutManager(activity)
 //        recyclerView.layoutManager = LinearLayoutManager(this)
-        recyclerView1.adapter = object : ItemRepresentationRecyclerViewAdapter() {
-            override val itemRepresentationMap = representationMap
 
-            override val items: List<ItemWithViewType> = Array(15, { i ->
-                if (i < 7) ItemA("item0$i") else ItemB("item$i")
-            }).asList()
+        recyclerView1.adapter = object : SingleItemTypeRecyclerViewAdapter<String>(TextViewItemRepresentation {
+            println(it)
+            textViewIR01.update(contentMain, it)
+            Snackbar.make(recyclerView1, "text = $it", Snackbar.LENGTH_LONG)
+                .setAction("Action", null).show()
+        }) {
+            override val items = Array(15) { i -> "str$i" }.asList()
         }
+//
 
         recyclerView2.adapter = object : ItemRepresentationRecyclerViewAdapter() {
-            override val itemRepresentationMap = representationMap
-            override val items: List<ItemWithViewType> = Array(25, { i ->
+            override val items: List<ItemWithViewType> = Array(25) { i ->
                 if (i < 10) {
-                    ItemAA("itemAA2 0$i")
+                    ItemA("itemAA2 0$i")
                 } else ItemB("itemAA2 $i")
-            }).asList()
-        }
+            }.asList()
+        }.apply {
+            this += VH01A {
+                println("MainActivity.onItemClick " + it.label)
+            }
+            this += VH01B(
+                {
+                    println("MainActivity.onItemClick  - " + it.labl)
+                    Snackbar.make(recyclerView1, "Btext = ${it.labl}", Snackbar.LENGTH_LONG)
+                        .setAction("Action", null).show()
+                },
+                {
+                    println("MainActivity.onIteDmClick - " + it)
 
-    }
+                    Snackbar.make(recyclerView1, "Btext = $it", Snackbar.LENGTH_LONG)
+                        .setAction("Action", null).show()
+                })
 
-    class ItemAA(val label: String, override val viewType: Int = Representation.RItemAA.ordinal) :
-        ItemWithViewType
-
-    class ItemA(val label: String, override val viewType: Int = Representation.RItemA.ordinal) :
-        ItemWithViewType
-
-    class ItemB(val labl: String, override val viewType: Int = Representation.RItemB.ordinal) :
-        ItemWithViewType
-
-    enum class Representation {
-        RItemA,
-        RItemAA,
-        RItemB,
-    }
-
-    class VH01A(val onItemClick: (ItemA) -> Unit) : ItemRepresentation {
-        override fun createViewHolder(parent: ViewGroup) = ViewHolder(parent.viewBy(R.layout.text_row_item))
-        override val bindHelper = SimpleBindHelper<ViewHolder, ItemA> { item ->
-            view.setOnClickListener { onItemClick(item) }
-            textView.text = "A " + item.label
-        }
-
-        class ViewHolder(v: View) : SimpleViewHolder(v) {
-            val textView = v.findViewById<TextView>(R.id.textView)
         }
     }
-
-    class VH01AA : ItemRepresentation {
-        override fun createViewHolder(parent: ViewGroup) = ViewHolder(parent.viewBy(R.layout.text_row_item))
-        override val bindHelper = SimpleBindHelper<ViewHolder, ItemAA> {
-            textView.text = "AA " + it.label
-        }
-
-        class ViewHolder(v: View) : SimpleViewHolder(v) {
-            val textView = v.findViewById<TextView>(R.id.textView)
-        }
-    }
-
-    class VH01B(val onItemClick: (ItemB) -> Unit, val onItemDClick: (Int) -> Unit) : ItemRepresentation {
-        override fun createViewHolder(parent: ViewGroup) = ViewHolder(parent.viewBy(R.layout.text_row_item))
-        override val bindHelper = BindHelperWithPosition<ViewHolder, ItemB> { item, position ->
-            textView.text = "B ${item.labl} $position"
-            view.setOnClickListener { onItemClick(item) }
-            view.setOnLongClickListener { onItemDClick(position); true }
-        }
-
-        class ViewHolder(v: View) : SimpleViewHolder(v) {
-            val textView = v.findViewById<TextView>(R.id.textView)
-        }
-    }
-
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         // Inflate the menu; this adds items to the action bar if it is present.
