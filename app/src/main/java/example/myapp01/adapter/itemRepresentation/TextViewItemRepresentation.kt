@@ -16,7 +16,8 @@ class TextViewItemRepresentation(
 ) : ItemRepresentationView<String>() {
 
     override fun createViewHolder(parent: ViewGroup) = ViewHolder(parent.viewBy(layoutId, viewId))
-    override val helper = HelperPlusPosition(ViewHolder::class.java, String::class.java) { item, position ->
+
+    override val helper = withPositionHelper<ViewHolder> { item, position ->
         textView.text = item
         itemView.setOnClickListener { onClick("click on >$item $position<") }
     }

@@ -20,13 +20,18 @@ interface ItemWithViewType {
     operator fun <IT> ItemRepresentation<IT>.invoke(i: IT) = checkType(i)
 
     fun <IT> ItemRepresentation<IT>.checkType(item: IT): Int {
-        return helper.vt
+        return helper.representationIndex
     }
 }
 
 typealias RecyclerViewHolder = RecyclerView.ViewHolder
 
-open class SimpleViewHolder(val view: View) : RecyclerViewHolder(view)
+open class SimpleViewHolder(val view: View) : RecyclerViewHolder(view) {
+
+    inline fun <reified V : View> RecyclerViewHolder.find(@IdRes viewId: Int): V {
+        return itemView.findViewById(viewId)
+    }
+}
 
 interface ItemRepresentationMap {
     val size: Int
@@ -50,7 +55,7 @@ class ItemRepresentationMapImpl : ItemRepresentationMap {
 
 }
 
-val emptyItemRepresentation = object : ItemRepresentation<ItemWithViewType> {
+val emptyItemRepresentation = object : ItemRepresentation<ItemWithViewType>() {
     override fun createViewHolder(parent: ViewGroup): RecyclerViewHolder {
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
@@ -74,7 +79,7 @@ interface ItemRepresentationTools {
     }
 }
 
-abstract class ItemRepresentationView<IT> : ItemRepresentation<IT> {
+abstract class ItemRepresentationView<IT> : ItemRepresentation<IT>() {
     private var viewHolder: RecyclerViewHolder? = null
 
     fun update(parent: ViewGroup, item: IT) {
@@ -87,46 +92,45 @@ abstract class ItemRepresentationView<IT> : ItemRepresentation<IT> {
     }
 }
 
-interface ItemRepresentation<IT> : ItemRepresentationTools {
+abstract class ItemRepresentation<IT> : ItemRepresentationTools {
     companion object {
         const val keyUndefined = -1
     }
+
     interface Helper<IT> {
-        var vt: Int
-        val itemClass: Class<IT>
+        var representationIndex: Int
         fun onBind(viewHolder: RecyclerViewHolder, item: IT, position: Int)
     }
 
-    fun createViewHolder(parent: ViewGroup): RecyclerViewHolder
+    internal abstract fun createViewHolder(parent: ViewGroup): RecyclerViewHolder
 
-    val helper: Helper<IT>
+    internal abstract val helper: Helper<IT>
 
-    fun <VHT : RecyclerViewHolder, IT> HelperPlusPosition(
-        hvClass: Class<VHT>, itemClass: Class<IT>, bindBlock: VHT.(IT, Int) -> Unit
-    ) = object : ItemRepresentation.Helper<IT> {
-        override var vt: Int = keyUndefined
-
-        override val itemClass = itemClass
-
-        @Suppress("UNCHECKED_CAST")
-        override fun onBind(viewHolder: RecyclerViewHolder, item: IT, position: Int) {
-            (viewHolder as VHT).bindBlock(item, position)
+    protected inline fun <reified VHT : RecyclerViewHolder> simpleHelper(crossinline bindBlock: VHT.(IT) -> Unit) =
+        object : ItemRepresentation.Helper<IT> {
+            override var representationIndex: Int = ItemRepresentation.keyUndefined
+            override fun onBind(viewHolder: RecyclerViewHolder, item: IT, position: Int) {
+                if (viewHolder is VHT) {
+                    viewHolder.bindBlock(item)
+                } else {
+                    TODO()
+                }
+            }
         }
-    }
 
-    fun <VHT : RecyclerViewHolder, IT> Helper(
-        hvClass: Class<VHT>, itemClass: Class<IT>, bindBlock: VHT.(IT) -> Unit
-    ) = object : ItemRepresentation.Helper<IT> {
-        override var vt: Int = keyUndefined
-        override val itemClass = itemClass
-        @Suppress("UNCHECKED_CAST")
-        override fun onBind(viewHolder: RecyclerViewHolder, item: IT, position: Int) {
-            (viewHolder as VHT).bindBlock(item)
+    protected inline fun <reified VHT : RecyclerViewHolder> withPositionHelper(crossinline bindBlock: VHT.(IT, Int) -> Unit) =
+        object : ItemRepresentation.Helper<IT> {
+            override var representationIndex: Int = ItemRepresentation.keyUndefined
+
+            override fun onBind(viewHolder: RecyclerViewHolder, item: IT, position: Int) {
+                if (viewHolder is VHT) {
+                    viewHolder.bindBlock(item, position)
+                } else {
+                    TODO()
+                }
+            }
         }
-    }
-
 }
-
 
 
 abstract class ItemRepresentationRecyclerViewAdapter : MultiItemTypeRecyclerViewAdapter<ItemWithViewType>() {
@@ -138,10 +142,11 @@ abstract class ItemRepresentationRecyclerViewAdapter : MultiItemTypeRecyclerView
         itemRepresentationMap[Representation.representationKey(ir)] = ir
     }
 
+    @Suppress("UNCHECKED_CAST")
     override fun itemRepresentation(viewType: Int): ItemRepresentation<ItemWithViewType> {
         val ir = itemRepresentationMap[viewType]
         if (emptyItemRepresentation == ir) {
-            return Representation[viewType]
+            return Representation[viewType] as ItemRepresentation<ItemWithViewType>
         }
         return ir
     }
@@ -153,7 +158,7 @@ abstract class MultiItemTypeRecyclerViewAdapter<IT> : RecyclerView.Adapter<Recyc
 
     abstract val items: List<IT>
 
-    abstract fun itemRepresentation(viewType: Int): ItemRepresentation<IT>
+    protected abstract fun itemRepresentation(viewType: Int): ItemRepresentation<IT>
 
     override fun getItemCount(): Int = items.size
 

@@ -7,27 +7,24 @@ import example.myapp01.itemRepresentation.ItemWithViewType
 class Representation {
     companion object {
 
-        private val map = mutableMapOf<String, ItemRepresentation<ItemWithViewType>>()
+        private val map = mutableMapOf<String, ItemRepresentation<out ItemWithViewType>>()
 
-        private val all = mutableListOf<ItemRepresentation<ItemWithViewType>>()
+        private val all = mutableListOf<ItemRepresentation<out ItemWithViewType>>()
 
         operator fun get(representationKey: Int) = all[representationKey]
-        val values: List<ItemRepresentation<ItemWithViewType>> = all
+        val values: List<ItemRepresentation<out ItemWithViewType>> = all
         fun representationKey(itemRepresentation: ItemRepresentation<out ItemWithViewType>): Int {
-            if (ItemRepresentation.keyUndefined == itemRepresentation.helper.vt) {
-                return map[itemRepresentation.javaClass.name]?.helper?.vt ?: TODO()
+            if (ItemRepresentation.keyUndefined == itemRepresentation.helper.representationIndex) {
+                return map[itemRepresentation.javaClass.name]?.helper?.representationIndex ?: TODO()
             }
-            return itemRepresentation.helper.vt
+            return itemRepresentation.helper.representationIndex
         }
 
-        @Suppress("UNCHECKED_CAST")
-        private val <T : ItemRepresentation<out ItemWithViewType>> T.add: T
+        private inline val <reified T : ItemRepresentation<out ItemWithViewType>> T.add: T
             get() {
-                this as ItemRepresentation<ItemWithViewType>
                 map[this.javaClass.name] = this
-                this.helper.vt = all.size
+                this.helper.representationIndex = all.size
                 all.add(this)
-                println("tmm01 " + this.helper.vt + " ${this.javaClass.name}")
                 return this
             }
 
