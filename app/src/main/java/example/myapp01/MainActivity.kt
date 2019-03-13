@@ -14,6 +14,7 @@ import example.myapp01.adapter.itemRepresentation.VH01B
 import example.myapp01.itemRepresentation.ItemRepresentationRecyclerViewAdapter
 import example.myapp01.itemRepresentation.ItemWithViewType
 import example.myapp01.itemRepresentation.SingleItemTypeRecyclerViewAdapter
+import example.mylib01.Lib
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.content_main.*
 
@@ -31,7 +32,7 @@ class MainActivity : AppCompatActivity() {
                 .setAction("Action", null).show()
         }
 
-        textViewIR01.update(contentMain, "textView01")
+        textViewIR01.update(contentMain, Lib.str01())
 
         fab.setOnClickListener { view ->
             Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
@@ -55,7 +56,7 @@ class MainActivity : AppCompatActivity() {
             Snackbar.make(recyclerView1, "text = $it", Snackbar.LENGTH_LONG)
                 .setAction("Action", null).show()
         }) {
-            override val items = Array(15) { i -> "str$i" }.asList()
+            override val items = Lib.list01()
         }
 //
 

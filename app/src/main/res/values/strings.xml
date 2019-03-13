@@ -1,4 +1,7 @@
 <resources>
     <string name="app_name">My App 01</string>
     <string name="action_settings">Settings</string>
+    <string name="str01">str_01</string>
+    <string name="str02">str_%s %s %s</string>
+    <string name="str03">str>%d</string>
 </resources>
