@@ -1,13 +1,16 @@
 package example.myapp01.itemRepresentation
 
 
+import android.content.Context
 import android.util.SparseArray
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.BaseAdapter
+import androidx.annotation.ColorRes
 import androidx.annotation.IdRes
 import androidx.annotation.LayoutRes
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 import example.myapp01.adapter.itemRepresentation.Representation
 
@@ -28,7 +31,7 @@ typealias RecyclerViewHolder = RecyclerView.ViewHolder
 
 open class SimpleViewHolder(val view: View) : RecyclerViewHolder(view) {
 
-    inline fun <reified V : View> RecyclerViewHolder.find(@IdRes viewId: Int): V {
+    protected inline fun <reified V : View> RecyclerViewHolder.find(@IdRes viewId: Int): V {
         return itemView.findViewById(viewId)
     }
 }
@@ -67,16 +70,23 @@ val emptyItemRepresentation = object : ItemRepresentation<ItemWithViewType>() {
 
 interface ItemRepresentationTools {
 
-    fun ViewGroup.viewBy(@LayoutRes layoutId: Int): View {
+    /*protected inline*/ fun ViewGroup.viewBy(@LayoutRes layoutId: Int): View {
         return LayoutInflater.from(this.context).inflate(layoutId, this, false)
     }
 
-    fun ViewGroup.viewBy(@LayoutRes layoutId: Int, @IdRes viewId: Int): View {
+    /*protected inline*/ fun ViewGroup.viewBy(@LayoutRes layoutId: Int, @IdRes viewId: Int): View {
         if (View.NO_ID == viewId) {
             return viewBy(layoutId)
         }
         return this.findViewById(viewId) ?: return viewBy(layoutId)
     }
+
+    /*protected inline*/ val RecyclerViewHolder.context: Context get() = itemView.context
+
+    /*protected inline*/ fun Context.color(@ColorRes colorResourceId: Int): Int = ContextCompat.getColor(this, colorResourceId)
+
+//    /*protected inline*/ fun Context.colorStateList(@ColorRes colorResourceId: Int): android.content.res.ColorStateList? = ContextCompat.getColorStateList(this, colorResourceId)
+
 }
 
 abstract class ItemRepresentationView<IT> : ItemRepresentation<IT>() {

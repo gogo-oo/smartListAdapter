@@ -14,7 +14,7 @@ class VH01A(val onItemClick: (ItemA) -> Unit) : ItemRepresentation<ItemA>() {
 
     override val helper = withPositionHelper<ViewHolder> { item, _ ->
         view.setOnClickListener { onItemClick(item) }
-        textView.text = "A+ " + item.label
+        textView.text = context.getString(R.string.itemA, item.label)
     }
 
     class ViewHolder(v: View) : SimpleViewHolder(v) {
@@ -27,7 +27,7 @@ class VH01B(val onItemClick: (ItemB) -> Unit, val onItemDClick: (Int) -> Unit) :
     override fun createViewHolder(parent: ViewGroup) = ViewHolder(parent.viewBy(R.layout.text_row_item))
 
     override val helper = withPositionHelper<ViewHolder> { item, position ->
-        textView.text = "B+ ${item.labl} $position"
+        textView.text = context.getString(R.string.itemB, item.labl, position)
         view.setOnClickListener { onItemClick(item) }
         view.setOnLongClickListener { onItemDClick(position); true }
     }

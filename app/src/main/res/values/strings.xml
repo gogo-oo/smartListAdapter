@@ -4,4 +4,7 @@
     <string name="str01">str_01</string>
     <string name="str02">str_%s %s %s</string>
     <string name="str03">str>%d</string>
+    <string name="itemA">A+%s</string>
+    <string name="itemAA">AA+%s</string>
+    <string name="itemB">B+%s %d</string>
 </resources>
