@@ -148,7 +148,7 @@ abstract class ItemRepresentationRecyclerViewAdapter : MultiItemTypeRecyclerView
     private val itemRepresentationMap = ItemRepresentationMapImpl()
 
     @Suppress("UNCHECKED_CAST")
-    operator fun plusAssign(ir: ItemRepresentation<out ItemWithViewType>) {
+    infix fun configureItemRepresentation(ir: ItemRepresentation<out ItemWithViewType>) {
         itemRepresentationMap[Representation.representationKey(ir)] = ir
     }
 

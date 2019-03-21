@@ -6,7 +6,6 @@ import android.view.MenuItem
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.snackbar.Snackbar
 import example.myapp01.adapter.item.ItemA
-import example.myapp01.adapter.item.ItemAA
 import example.myapp01.adapter.item.ItemB
 import example.myapp01.adapter.itemRepresentation.TextViewItemRepresentation
 import example.myapp01.adapter.itemRepresentation.VH01A
@@ -67,10 +66,10 @@ class MainActivity : AppCompatActivity() {
                 } else ItemB("itemAA2 $i")
             }.asList()
         }.apply {
-            this += VH01A {
+            this configureItemRepresentation VH01A {
                 println("MainActivity.onItemClick " + it.label)
             }
-            this += VH01B(
+            this configureItemRepresentation VH01B(
                 {
                     println("MainActivity.onItemClick  - " + it.labl)
                     Snackbar.make(recyclerView1, "Btext = ${it.labl}", Snackbar.LENGTH_LONG)
