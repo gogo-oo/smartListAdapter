@@ -87,6 +87,18 @@ interface ItemRepresentationTools {
 
 //    /*protected inline*/ fun Context.colorStateList(@ColorRes colorResourceId: Int): android.content.res.ColorStateList? = ContextCompat.getColorStateList(this, colorResourceId)
 
+    /*protected inline*/ fun View.visibilityVisible() {
+        this.visibility = View.VISIBLE
+    }
+
+    /*protected inline*/ fun View.visibilityInvisible() {
+        this.visibility = View.INVISIBLE
+    }
+
+    /*protected inline*/ fun View.visibilityGone() {
+        this.visibility = View.GONE
+    }
+
 }
 
 abstract class ItemRepresentationView<IT> : ItemRepresentation<IT>() {
